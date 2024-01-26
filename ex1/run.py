@@ -1,3 +1,4 @@
+import struct
 import pyhidra
 pyhidra.start()
 
@@ -92,12 +93,6 @@ with pyhidra.open_program('main.o') as flatApi:
 			print(f'Touch addr for assigning fibonacci value: {executionAddress}')
 			## Ghidra says local_10 is RBP-0x8 
 			rbpAddr = emuHelper.readRegister('RBP')
-
-			# print(rbpAddr)
-			# print('type(rbpAddr):', type(rbpAddr))
-			# print(dir(rbpAddr))
-			# print('rbpAddr.longValue:', rbpAddr.longValue())
-			# print('rbpAddr.intValue:', rbpAddr.intValue())
 			local10Addr = getAddress(
 				program, 
 				rbpAddr.intValue() - 0x8)
@@ -107,8 +102,9 @@ with pyhidra.open_program('main.o') as flatApi:
 		## Overwrite the assigned value
 		if prevExecution == getAddress(
 			program, 0x00101183):
-			r = emuHelper.readMemoryByte(local10Addr)
-			# r = emuHelper.readMemory(local10Addr, 4) ## Don't know why it doesn't work
+			# r = emuHelper.readMemoryByte(local10Addr)
+			r = emuHelper.readMemory(local10Addr, 4) ## Don't know why it doesn't work
+			r = struct.unpack('<I', r)
 			print(f'Read the value in addr of local_10 ({local10Addr}): {r}')
 			emuHelper.writeMemory(
 				local10Addr,
@@ -116,7 +112,8 @@ with pyhidra.open_program('main.o') as flatApi:
 					length=4, 
 					byteorder='little')
 				)
-			r = emuHelper.readMemoryByte(local10Addr)
+			r = emuHelper.readMemory(local10Addr, 4)
+			r = struct.unpack('<I', r)
 			print(f'Read the value in addr of local_10 after overwritten ({local10Addr}): {r}')
 
 		## The instruction @ 0x0010118a
@@ -147,9 +144,8 @@ with pyhidra.open_program('main.o') as flatApi:
 	## Let's read the return value here
 	print(f'Total number of executed instructions {i}')
 	r = emuHelper.readMemory(localcAddr, 4)
-	import struct
-	print(struct.unpack('<I', r))
-	print(dir(r))
+	r = struct.unpack('<I', r)
+	print(f'r: {r}')
 
 	## Dispose emulator
 	emuHelper.dispose()
