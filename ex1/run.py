@@ -50,8 +50,8 @@ with pyhidra.open_program('main.o') as flatApi:
 	## RBX is register for function's argument.
 	
 	## This setup can emulate the whole code...
-	emuHelper.writeRegister("RSP", 0x80000000)
-	emuHelper.writeRegister("RBP", 0x80000000) 
+	emuHelper.writeRegister("RSP", 0x40000000)
+	emuHelper.writeRegister("RBP", 0x40000000) 
 
 	## Set up the PC register to decide where 
 	## the emulation is going to start
@@ -62,9 +62,15 @@ with pyhidra.open_program('main.o') as flatApi:
 
 	## Execute emulation
 	monitor = ConsoleTaskMonitor()
-	controlledReturnAddr = getAddress(program, 0)
+	controlledReturnAddr = getAddress(
+		program, 
+		0x0010119e)
+	# controlledReturnAddr = getAddress(program, 0)
 
 	i = 0
+	prevExecution = None
+	local10Addr = None # Addr stores argument value of fibonacci
+	localcAddr  = None # Addr stores return value of fibonacci
 	while monitor.isCancelled() is False:
 		executionAddress = emuHelper.getExecutionAddress()
 		print('-' * 10)
@@ -84,6 +90,34 @@ with pyhidra.open_program('main.o') as flatApi:
 		if executionAddress == getAddress(
 			program, 0x00101183):
 			print(f'Touch addr for assigning fibonacci value: {executionAddress}')
+			## Ghidra says local_10 is RBP-0x8 
+			rbpAddr = emuHelper.readRegister('RBP')
+
+			# print(rbpAddr)
+			# print('type(rbpAddr):', type(rbpAddr))
+			# print(dir(rbpAddr))
+			# print('rbpAddr.longValue:', rbpAddr.longValue())
+			# print('rbpAddr.intValue:', rbpAddr.intValue())
+			local10Addr = getAddress(
+				program, 
+				rbpAddr.intValue() - 0x8)
+			print(f'Addr in RBP: {hex(rbpAddr.intValue())}')
+			print(f'local10Addr: {local10Addr}')
+
+		## Overwrite the assigned value
+		if prevExecution == getAddress(
+			program, 0x00101183):
+			r = emuHelper.readMemoryByte(local10Addr)
+			# r = emuHelper.readMemory(local10Addr, 4) ## Don't know why it doesn't work
+			print(f'Read the value in addr of local_10 ({local10Addr}): {r}')
+			emuHelper.writeMemory(
+				local10Addr,
+				(15).to_bytes(
+					length=4, 
+					byteorder='little')
+				)
+			r = emuHelper.readMemoryByte(local10Addr)
+			print(f'Read the value in addr of local_10 after overwritten ({local10Addr}): {r}')
 
 		## The instruction @ 0x0010118a
 		## assigns 0 to the return variable r
@@ -91,28 +125,31 @@ with pyhidra.open_program('main.o') as flatApi:
 			program, 
 			0x0010118a):
 			print(f'Touch addr for initializing return value: {executionAddress}')
+			## Ghidra says local_c is RBP-0x4 
+			rbpAddr = emuHelper.readRegister('RBP')
+			localcAddr = getAddress(
+				program, 
+				rbpAddr.intValue() - 0x4)
+			print(f'Addr in RBP: {hex(rbpAddr.intValue())}')
+			print(f'localcAddr: {localcAddr}')
 
 		success = emuHelper.step(monitor)
 		if not success:
 			lastError = emuHelper.getLastError()
 			print(f"Emulation error: {lastError}")
 			break
-		# r = emuHelper.readRegister('RBX')
-		# print(f'RBX: {r}')
 		i += 1
+		prevExecution = executionAddress
 
-		if i == 10: break
+		### This is temp
+		# if i == 10: break
 
-	r = emuHelper.readMemory(
-		getAddress(program, 0x7ffffff0), 4)
-	print('r:', r)
-	## 
-	# r = emuHelper.readRegister('EBX')
-	# print(f'EBX: {r}')
-	# r = emuHelper.readRegister('EAX')
-	# print(f'EAX: {r}')
-
-	print('i:', i)
+	## Let's read the return value here
+	print(f'Total number of executed instructions {i}')
+	r = emuHelper.readMemory(localcAddr, 4)
+	import struct
+	print(struct.unpack('<I', r))
+	print(dir(r))
 
 	## Dispose emulator
 	emuHelper.dispose()
