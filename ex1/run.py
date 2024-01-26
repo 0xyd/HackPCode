@@ -83,7 +83,6 @@ with pyhidra.open_program('main.o') as flatApi:
 		### When instruction reaches RET in fibonacci
 		### it ends.
 		if executionAddress == controlledReturnAddr:
-		# if executionAddress.toString() == "0010119b":
 			break
 
 		## The instruction @ 0x00101183 
@@ -102,8 +101,7 @@ with pyhidra.open_program('main.o') as flatApi:
 		## Overwrite the assigned value
 		if prevExecution == getAddress(
 			program, 0x00101183):
-			# r = emuHelper.readMemoryByte(local10Addr)
-			r = emuHelper.readMemory(local10Addr, 4) ## Don't know why it doesn't work
+			r = emuHelper.readMemory(local10Addr, 4) 
 			r = struct.unpack('<I', r)
 			print(f'Read the value in addr of local_10 ({local10Addr}): {r}')
 			emuHelper.writeMemory(
